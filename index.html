@@ -5,8 +5,7 @@
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 </head>
 <body>
-    <!-- The game-manager component is now attached directly to the scene here -->
-    <a-scene game-manager background="color: #1a1a2e" shadow="type: pcfsoft">
+    <a-scene background="color: #1a1a2e" shadow="type: pcfsoft">
 
         <!-- Camera Rig-->
         <a-entity camera look-controls="enabled: false" position="0 15 1" rotation="-90 0 0">
@@ -215,8 +214,10 @@
             }
         });
 
-        // This line was removed because the component is now attached in the HTML
-        // document.querySelector('a-scene').setAttribute('game-manager', {});
+        document.querySelector('a-scene').setAttribute('game-manager', {});
     </script>
 </body>
 </html>
+
+
+
