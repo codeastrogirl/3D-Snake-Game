@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>A-Frame 3D Snake</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+</head>
+<body>
+    <a-scene background="color: #1a1a2e" shadow="type: pcfsoft">
+
+        <!-- Camera Rig-->
+        <a-entity camera look-controls="enabled: false" position="0 15 1" rotation="-90 0 0">
+            <a-text id="score-text" value="Score: 0"
+                    align="center" color="#FFF" width="8"
+                    position="0 5 -10"
+                    font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+            </a-text>
+            <a-text id="game-over-text" value="GAME OVER\nPress any key to play again!"
+                    align="center" color="#FF5252" width="10"
+                    position="0 2 -10" visible="false"
+                    font="https://cdn.aframe.io/fonts/Exo2Bold.fnt">
+            </a-text>
+        </a-entity>
+
+        <a-light type="ambient" intensity="0.6"></a-light>
+        <a-light type="directional" intensity="0.8" position="5 10 5" castShadow="true"></a-light>
+
+        <a-plane id="ground"
+                 rotation="-90 0 0"
+                 width="22" height="22"
+                 color="#4CAF50"
+                 shadow="receive: true">
+        </a-plane>
+        <a-box color="#388E3C" depth="22" height="2" width="1" position="-11.5 1 0"></a-box>
+        <a-box color="#388E3C" depth="22" height="2" width="1" position="11.5 1 0"></a-box>
+        <a-box color="#388E3C" depth="1" height="2" width="24" position="0 1 -11.5"></a-box>
+        <a-box color="#388E3C" depth="1" height="2" width="24" position="0 1 11.5"></a-box>
+
+        <a-entity id="snake-container"></a-entity>
+        <a-sphere id="food"
+                  color="#F44336" radius="0.5"
+                  position="4 0.5 4"
+                  shadow="cast: true">
+        </a-sphere>
+
+    </a-scene>
+
+    <script>
+        // Manages the entire snake game state and logic.
+        AFRAME.registerComponent('game-manager', {
+            schema: {
+                gridSize: { default: 1 },
+                bounds: { default: 10 },
+                gameSpeed: { default: 200 }
+            },
+
+            init: function () {
+                // Cache element references
+                this.sceneEl = document.querySelector('a-scene');
+                this.snakeContainer = document.getElementById('snake-container');
+                this.food = document.getElementById('food');
+                this.scoreText = document.getElementById('score-text');
+                this.gameOverText = document.getElementById('game-over-text');
+                
+                this.handleKeyDown = this.handleKeyDown.bind(this);
+                this.gameLoop = this.gameLoop.bind(this);
+                this.restartGame = this.restartGame.bind(this);
+                
+                document.addEventListener('keydown', this.handleKeyDown);
+                this.startGame();
+            },
+
+            startGame: function() {
+                // Initial game state
+                this.snakeBody = [];
+                this.score = 0;
+                this.direction = { x: 1, z: 0 }; // Start moving right
+                this.lastDirection = { x: 1, z: 0 }; 
+                this.gameOver = false;
+                
+                this.gameOverText.setAttribute('visible', false);
+                this.updateScore(0);
+                
+                //  initial snake head
+                this.addSegment({ x: 0, y: 0.5, z: 0 });
+                this.spawnFood();
+
+                this.gameInterval = setInterval(this.gameLoop, this.data.gameSpeed);
+            },
+            
+            gameLoop: function () {
+                const head = this.snakeBody[0];
+                const currentPos = head.getAttribute('position');
+                const newPos = {
+                    x: currentPos.x + this.direction.x * this.data.gridSize,
+                    y: 0.5,
+                    z: currentPos.z + this.direction.z * this.data.gridSize,
+                };
+
+                if (this.isColliding(newPos)) {
+                    this.endGame();
+                    return;
+                }
+
+                const foodPos = this.food.getAttribute('position');
+                const ateFood = (Math.abs(newPos.x - foodPos.x) < 0.1 && Math.abs(newPos.z - foodPos.z) < 0.1);
+
+                if (ateFood) {
+                    this.updateScore(this.score + 1);
+                    this.spawnFood();
+                } else {
+                    // If no food was eaten, the tail is removed 
+                    const tail = this.snakeBody.pop();
+                    tail.parentNode.removeChild(tail);
+                }
+
+                this.addSegment(newPos);
+            },
+            
+            isColliding: function (headPos) {
+                // Wall collision check
+                if (Math.abs(headPos.x) > this.data.bounds || Math.abs(headPos.z) > this.data.bounds) {
+                    return true;
+                }
+                // Self-collision check
+                for (let i = 0; i < this.snakeBody.length; i++) {
+                    const segPos = this.snakeBody[i].getAttribute('position');
+                    if (headPos.x === segPos.x && headPos.z === segPos.z) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+
+            handleKeyDown: function (e) {
+                if (this.gameOver) {
+                    this.restartGame();
+                    return;
+                }
+                
+                // Prevent the snake from performing a 180-degree turn
+                this.lastDirection = this.direction;
+                switch (e.code) {
+                    case 'ArrowUp':
+                    case 'KeyW':
+                        if (this.lastDirection.z !== 1) this.direction = { x: 0, z: -1 };
+                        break;
+                    case 'ArrowDown': 
+                    case 'KeyS':
+                        if (this.lastDirection.z !== -1) this.direction = { x: 0, z: 1 };
+                        break;
+                    case 'ArrowLeft':
+                    case 'KeyA':
+                        if (this.lastDirection.x !== 1) this.direction = { x: -1, z: 0 };
+                        break;
+                    case 'ArrowRight':
+                    case 'KeyD':
+                        if (this.lastDirection.x !== -1) this.direction = { x: 1, z: 0 };
+                        break;
+                }
+            },
+            
+            addSegment: function (pos) {
+                const segment = document.createElement('a-box');
+                segment.setAttribute('width', this.data.gridSize);
+                segment.setAttribute('height', this.data.gridSize);
+                segment.setAttribute('depth', this.data.gridSize);
+                segment.setAttribute('position', pos);
+                segment.setAttribute('shadow', 'cast: true');
+                segment.setAttribute('color', '#43A047'); // New head color
+                
+                if (this.snakeBody.length > 0) {
+                    this.snakeBody[0].setAttribute('color', '#66BB6A'); 
+                }
+                
+                this.snakeBody.unshift(segment);
+                this.snakeContainer.appendChild(segment);
+            },
+            
+            spawnFood: function () {
+                let foodPos;
+                let onSnake = true;
+                const bounds = this.data.bounds;
+
+                while(onSnake) {
+                    foodPos = {
+                        x: Math.floor(Math.random() * (bounds * 2 + 1) - bounds),
+                        y: 0.5,
+                        z: Math.floor(Math.random() * (bounds * 2 + 1) - bounds)
+                    };
+                    onSnake = this.snakeBody.some(segment => {
+                        const segPos = segment.getAttribute('position');
+                        return segPos.x === foodPos.x && segPos.z === foodPos.z;
+                    });
+                }
+                this.food.setAttribute('position', foodPos);
+            },
+
+            updateScore: function (newScore) {
+                this.score = newScore;
+                this.scoreText.setAttribute('value', `Score: ${this.score}`);
+            },
+
+            endGame: function () {
+                this.gameOver = true;
+                clearInterval(this.gameInterval);
+                this.gameOverText.setAttribute('visible', true);
+            },
+            
+            restartGame: function() {
+                while (this.snakeContainer.firstChild) {
+                    this.snakeContainer.removeChild(this.snakeContainer.firstChild);
+                }
+                this.startGame();
+            }
+        });
+
+        document.querySelector('a-scene').setAttribute('game-manager', {});
+    </script>
+</body>
+</html>
+
+
+
