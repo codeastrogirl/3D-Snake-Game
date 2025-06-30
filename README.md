@@ -1,2 +1,4 @@
 # 3D-Snake-Game
-<img width="906" alt="Screenshot 2025-06-29 at 4 22 27 PM" src="https://github.com/user-attachments/assets/54b11405-04d9-4de1-999a-04c5efa94fdb" />
+
+<img width="1202" alt="Screenshot 2025-06-30 at 9 10 16 PM" src="https://github.com/user-attachments/assets/09bb10a8-cd39-4374-8b3e-70e78af4de86" />
+<img width="1040" alt="Screenshot 2025-06-30 at 9 10 38 PM" src="https://github.com/user-attachments/assets/38d5e33f-399d-429c-88df-e7fe615d37c3" />
